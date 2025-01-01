@@ -4,10 +4,16 @@ import subprocess
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import shlex
-from googletrans import Translator  # Modulo per la traduzione
-import difflib  # Per suggerire comandi simili
+from googletrans import Translator
+import difflib
 
-translator = Translator()  # Inizializza il traduttore
+translator = Translator()
+
+def esegui_comando_diretto(comando):
+    """Esegue un comando diretto dal menu."""
+    input_comando.delete(0, tk.END)  # Pulisce l'input
+    input_comando.insert(0, comando)  # Inserisce il comando
+    esegui_comando()
 
 def esegui_comando():
     """Esegue il comando e mostra il risultato."""
@@ -28,7 +34,6 @@ def esegui_comando():
 
 def suggerisci_comandi(comando_errato):
     """Suggerisce comandi simili in caso di errore."""
-    # Recupera la lista dei comandi validi dal sistema
     try:
         comandi = subprocess.run("compgen -c", shell=True, stdout=subprocess.PIPE, text=True).stdout.splitlines()
         suggerimenti = difflib.get_close_matches(comando_errato, comandi, n=5, cutoff=0.6)
@@ -53,7 +58,6 @@ def spiega_comando():
         
         if result.returncode == 0:
             man_output = result.stdout
-            # Traduzione in italiano
             traduzione = translator.translate(man_output, src='en', dest='it').text
             spiegazione_text.insert(tk.END, traduzione)
         else:
@@ -69,9 +73,8 @@ def salva_output():
             filetypes=[("File di testo", "*.txt"), ("Tutti i file", "*.*")]
         )
         if not file_path:
-            return  # Utente ha annullato l'operazione
+            return
         
-        # Determina quale sezione salvare
         contenuto_output = output_text.get("1.0", tk.END).strip()
         contenuto_spiegazione = spiegazione_text.get("1.0", tk.END).strip()
         
@@ -95,18 +98,41 @@ def mostra_info():
 # Creazione finestra principale
 root = tk.Tk()
 root.title("Shell Grafica Linux")
-root.geometry("800x700")
+root.geometry("900x800")
 
 # Barra dei menu
 menu = tk.Menu(root)
 root.config(menu=menu)
 
-file_menu = tk.Menu(menu, tearoff=0)
-file_menu.add_command(label="Salva Output", command=salva_output)
-file_menu.add_separator()
-file_menu.add_command(label="Esci", command=root.quit)
-menu.add_cascade(label="File", menu=file_menu)
+# Funzione per aggiungere menu dinamicamente
+def aggiungi_categoria_menu(titolo, comandi):
+    """Aggiunge una categoria e i suoi comandi al menu."""
+    submenu = tk.Menu(menu, tearoff=0)
+    for comando in comandi:
+        submenu.add_command(label=comando, command=lambda cmd=comando: esegui_comando_diretto(cmd))
+    menu.add_cascade(label=titolo, menu=submenu)
 
+# Categorie e comandi
+categorie = {
+    "Comandi di Base": ["ls", "pwd", "cd", "mkdir", "touch", "rm"],
+    "Permessi e Proprietà": ["chmod", "chown", "chgrp"],
+    "Gestione dei Processi": ["ps", "top", "kill", "jobs"],
+    "Compressione e Archiviazione": ["tar", "zip", "unzip", "gzip"],
+    "Ricerca": ["find", "locate", "grep"],
+    "Gestione del Disco": ["df", "du", "mount", "umount"],
+    "Rete": ["ping", "wget", "curl", "ifconfig"],
+    "Gestione Utenti": ["who", "whoami", "id", "adduser"],
+    "Gestione Pacchetti": ["apt", "yum", "pacman", "snap"],
+    "Monitoraggio": ["dmesg", "uptime", "free", "vmstat"],
+    "Programmazione e Scripting": ["bash", "python", "gcc", "make"],
+    "Comandi Utili": ["alias", "unalias", "history", "echo", "clear"]
+}
+
+# Aggiungi le categorie al menu
+for categoria, comandi in categorie.items():
+    aggiungi_categoria_menu(categoria, comandi)
+
+# Menu Aiuto
 help_menu = tk.Menu(menu, tearoff=0)
 help_menu.add_command(label="Informazioni", command=mostra_info)
 menu.add_cascade(label="Aiuto", menu=help_menu)
