@@ -8,12 +8,62 @@ from threading import Thread
 
 translator = Translator()
 
-# Database dei comandi e relativi flag
+# Categorie dei comandi con relativi flag
 comandi_e_flag = {
     "ls": ["-l (dettagliato)", "-a (includi file nascosti)", "-h (dimensioni leggibili)"],
-    "grep": ["-i (ignora maiuscole/minuscole)", "-r (ricorsivo)", "-v (inversa)"],
+    "pwd": [],
+    "cd": [],  # Cambio directory
+    "mkdir": ["-p (crea directory annidate)"],
+    "rm": ["-r (ricorsivo)", "-f (forza eliminazione)"],
+    "mv": [],
+    "cp": ["-r (ricorsivo)", "-f (forza copia)"],
+    "chmod": ["-R (ricorsivo)", "+x (aggiungi eseguibilità)", "u+w (aggiungi scrittura utente)"],
+    "chown": ["-R (ricorsivo)"],
+    "chgrp": ["-R (ricorsivo)"],
     "ps": ["-e (tutti i processi)", "-f (formato completo)", "-u (specifica utente)"],
+    "top": [],
+    "kill": ["-9 (terminazione forzata)"],
+    "jobs": [],
     "tar": ["-c (crea archivio)", "-x (estrae archivio)", "-z (compressione gzip)"],
+    "zip": ["-r (ricorsivo)"],
+    "unzip": ["-o (sovrascrivi senza chiedere)", "-l (elenca contenuto)"],
+    "gzip": [],
+    "find": ["-name (cerca per nome)", "-type d (cerca directory)", "-size +1M (file > 1MB)"],
+    "locate": [],
+    "grep": ["-i (ignora maiuscole/minuscole)", "-r (ricorsivo)", "-v (inversa)"],
+    "df": ["-h (spazio leggibile)", "-T (mostra tipo filesystem)", "-i (informazioni inode)"],
+    "du": ["-h (dimensioni leggibili)", "-s (sommario)"],
+    "mount": [],
+    "umount": [],
+    "ping": ["-c 4 (numero pacchetti)", "-i 0.2 (intervallo secondi)", "-s 64 (dimensione pacchetto)"],
+    "wget": ["--quiet (silenzioso)", "--limit-rate=100k (limita velocità)", "-O (file di output)"],
+    "curl": ["-X POST (metodo HTTP)", "-d (dati corpo richiesta)"],
+    "ifconfig": [],
+    "who": [],
+    "whoami": [],
+    "id": [],
+    "adduser": ["-m (crea home directory)", "-s /bin/bash (specifica shell)"],
+    "apt": ["update (aggiorna pacchetti)", "upgrade (aggiorna sistema)"],
+    "yum": ["install (installa pacchetti)", "remove (rimuove pacchetti)"],
+    "pacman": ["-S (installa pacchetti)", "-R (rimuove pacchetti)"],
+    "snap": ["install (installa pacchetti)", "remove (rimuove pacchetti)"],
+    "dmesg": [],
+    "uptime": [],
+    "free": ["-h (formato leggibile)"],
+    "vmstat": [],
+    "bash": [],
+    "python": [],
+    "gcc": ["-o (specifica file output)"],
+    "make": [],
+    "alias": [],
+    "unalias": [],
+    "history": [],
+    "echo": [],
+    "clear": [],
+    "smbclient": ["-L (elenca risorse condivise)", "-U (specifica utente)", "-N (senza autenticazione)"],
+    "testparm": ["-v (output dettagliato)", "--suppress-prompt (sopprime domande)"],
+    "smbpasswd": ["-a (aggiunge utente)", "-x (rimuove utente)"],
+    "nmblookup": ["-A (esegue una ricerca avanzata)", "-R (forza interrogazione broadcast)"],
 }
 
 simulazione_in_corso = False
@@ -21,41 +71,58 @@ processo_corrente = None
 
 
 def mostra_selettore_flag(comando):
+    """Mostra una finestra per selezionare i flag e inserire parametri aggiuntivi per il comando."""
     top = Toplevel(root)
-    top.title(f"Seleziona opzioni per {comando}")
-    top.geometry("400x300")
+    top.title(f"Configura opzioni per {comando}")
+    top.geometry("500x400")
 
-    label = tk.Label(top, text=f"Seleziona le opzioni per '{comando}':")
+    label = tk.Label(top, text=f"Configura il comando '{comando}':")
     label.pack(pady=10)
 
     variabili_flag = []
+    entry_parametro = None
 
-    def applica_flag():
+    def applica_configurazione():
+        """Costruisce il comando con flag e parametri personalizzati."""
         global simulazione_in_corso
         if simulazione_in_corso:
             messagebox.showwarning("Attenzione", "Un comando è già in esecuzione!")
             return
 
+        # Costruisce i flag
         flag_selezionati = []
         for var, flag in variabili_flag:
             if var.get():
                 flag_selezionati.append(flag.split()[0])
-        comando_completo = f"{comando} {' '.join(flag_selezionati)}"
+
+        # Recupera eventuali parametri
+        parametri = entry_parametro.get().strip() if entry_parametro else ""
+
+        # Costruisce il comando completo
+        comando_completo = f"{comando} {' '.join(flag_selezionati)} {parametri}"
         input_comando.delete(0, tk.END)
         input_comando.insert(0, comando_completo)
         top.destroy()
 
+    # Crea i checkbox per i flag
     for flag in comandi_e_flag.get(comando, []):
         var = IntVar()
         chk = Checkbutton(top, text=flag, variable=var)
         chk.pack(anchor="w")
         variabili_flag.append((var, flag))
 
-    btn_applica = tk.Button(top, text="Applica", command=applica_flag)
+    # Aggiunge un campo per i parametri aggiuntivi
+    label_parametro = tk.Label(top, text="Inserisci parametri aggiuntivi (es. nome file, directory, ecc.):")
+    label_parametro.pack(pady=5)
+    entry_parametro = tk.Entry(top, width=40)
+    entry_parametro.pack(pady=5)
+
+    btn_applica = tk.Button(top, text="Applica Configurazione", command=applica_configurazione)
     btn_applica.pack(pady=10)
 
 
 def esegui_comando():
+    """Esegue il comando e mostra il risultato."""
     global simulazione_in_corso, processo_corrente
     if simulazione_in_corso:
         messagebox.showwarning("Attenzione", "Un comando è già in esecuzione!")
@@ -87,6 +154,7 @@ def esegui_comando():
 
 
 def interrompi_comando():
+    """Interrompe l'esecuzione del comando."""
     global simulazione_in_corso, processo_corrente
     if simulazione_in_corso and processo_corrente:
         processo_corrente.terminate()
@@ -98,6 +166,7 @@ def interrompi_comando():
 
 
 def spiega_comando():
+    """Mostra una spiegazione del comando e la traduce in italiano."""
     comando = input_comando.get().split()[0]
     if not comando.strip():
         messagebox.showwarning("Attenzione", "Inserire un comando!")
@@ -127,7 +196,18 @@ root.config(menu=menu)
 
 categorie = {
     "Comandi di Base": ["ls", "pwd", "cd", "mkdir", "touch", "rm"],
-    "Gestione dei Processi": ["ps", "top", "kill"],
+    "Permessi e Proprietà": ["chmod", "chown", "chgrp"],
+    "Gestione dei Processi": ["ps", "top", "kill", "jobs"],
+    "Compressione e Archiviazione": ["tar", "zip", "unzip", "gzip"],
+    "Ricerca": ["find", "locate", "grep"],
+    "Gestione del Disco": ["df", "du", "mount", "umount"],
+    "Rete": ["ping", "wget", "curl", "ifconfig"],
+    "Gestione Utenti": ["who", "whoami", "id", "adduser"],
+    "Gestione Pacchetti": ["apt", "yum", "pacman", "snap"],
+    "Monitoraggio": ["dmesg", "uptime", "free", "vmstat"],
+    "Programmazione e Scripting": ["bash", "python", "gcc", "make"],
+    "Comandi Utili": ["alias", "unalias", "history", "echo", "clear"],
+    "Comandi Samba": ["smbclient", "testparm", "smbpasswd", "nmblookup"]
 }
 
 for categoria, comandi in categorie.items():
